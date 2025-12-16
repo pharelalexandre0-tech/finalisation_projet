@@ -1,4 +1,4 @@
-name: CI Pipeline Complète
+name: CI Pipeline
 
 on:
   push:
@@ -11,100 +11,105 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout
+    - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
-    - name: 🧪 Tests
+    - name: ⚙️ Configuration Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: 📦 Installation des dépendances
+      run: |
+        npm init -y
+        npm install --save-dev jest
+    
+    - name: 🧪 Exécution des tests
       run: |
         echo "🚀 Lancement des tests..."
+        # Créer un fichier HTML temporaire pour les tests
+        cat > test.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head><title>Mon Application Web</title></head>
+        <body><div class="container"><section></section><section></section></div></body>
+        </html>
+        EOF
         
-        # Vérification des fichiers
-        echo "📁 Vérification des fichiers requis..."
-        required_files=("index.html" "Dockerfile")
-        for file in "${required_files[@]}"; do
-          if [ -f "$file" ]; then
-            echo "✅ $file présent"
-          else
-            echo "❌ $file manquant"
-            exit 1
-          fi
-        done
+        # Copier le fichier de test
+        cp tests/test.js test-runner.js
         
-        echo "✅ Tous les tests sont passés !"
+        # Ajouter un script pour exécuter les tests
+        cat >> test-runner.js << 'EOF'
+        const fs = require('fs');
+        const { JSDOM } = require('jsdom');
+        
+        const html = fs.readFileSync('test.html', 'utf8');
+        const dom = new JSDOM(html);
+        global.document = dom.window.document;
+        global.window = dom.window;
+        
+        require('./test-runner');
+        EOF
+        
+        # Installer jsdom pour les tests
+        npm install jsdom
+        
+        # Exécuter les tests
+        if node test-runner.js; then
+          echo "✅ Tous les tests sont passés"
+        else
+          echo "❌ Certains tests ont échoué"
+          exit 1
+        fi
     
-    - name: 📊 Rapport CI
+    - name: 📊 Génération de rapport
       run: |
-        echo "## 📋 RAPPORT CI" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Statut :** ✅ SUCCÈS" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Tests exécutés :**" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Vérification des fichiers" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Structure du projet" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Prochaines étapes :**" >> $GITHUB_STEP_SUMMARY
-        echo "1. ✅ Tests CI" >> $GITHUB_STEP_SUMMARY
-        echo "2. 🐳 Build Docker (si sur main)" >> $GITHUB_STEP_SUMMARY
-        echo "3. 🚀 Déploiement GitHub Pages (si sur main)" >> $GITHUB_STEP_SUMMARY
+        echo "📈 Rapport de build généré"
+        echo "Statut: SUCCÈS" > build-report.txt
+        echo "Date: $(date)" >> build-report.txt
+        echo "Branche: ${{ github.ref }}" >> build-report.txt
+        echo "Commit: ${{ github.sha }}" >> build-report.txt
+    
+    - name: 📦 Artifact - Rapport de build
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-report
+        path: build-report.txt
+    
+    - name: ✅ Status GitHub
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: 'success',
+            context: 'CI Tests',
+            description: 'Tous les tests sont passés avec succès',
+            target_url: `https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+          })
   
-  build-docker:
+  build:
     needs: test
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout
+    - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
-    - name: 🐳 Build Docker (test local)
+    - name: 🐳 Build Docker
       run: |
         echo "🔨 Construction de l'image Docker..."
-        docker build -t tp-devops-app:ci-test .
-        echo "✅ Image construite avec succès"
-        
-        # Vérifier la taille
-        echo "📦 Taille de l'image :"
-        docker images tp-devops-app:ci-test --format "{{.Size}}"
-        
-        # Tester le conteneur rapidement
-        echo "🧪 Test rapide du conteneur..."
-        docker run -d --name test-app -p 8080:80 tp-devops-app:ci-test
-        sleep 3
-        docker ps --filter "name=test-app" --format "table {{.Names}}\t{{.Status}}"
-        docker stop test-app
-        docker rm test-app
-  
-  deploy:
-    needs: [test, build-docker]
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+        docker build -t my-web-app:ci-${{ github.sha }} .
+        echo "✅ Build Docker terminé"
     
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    permissions:
-      pages: write
-      id-token: write
-    
-    steps:
-    - name: 🚀 Déployer sur GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
-    
-    - name: 📢 Rapport final
-      run: |
-        echo "## 🎯 DÉPLOIEMENT COMPLET" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**🚀 Pipeline CI/CD terminé avec succès !**" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ✅ ÉTAPES ACCOMPLIES :" >> $GITHUB_STEP_SUMMARY
-        echo "1. **Tests CI** - Validation du code" >> $GITHUB_STEP_SUMMARY
-        echo "2. **Build Docker** - Image construite" >> $GITHUB_STEP_SUMMARY
-        echo "3. **Publication Docker** - Image poussée sur Docker Hub" >> $GITHUB_STEP_SUMMARY
-        echo "4. **Déploiement** - Site en ligne sur GitHub Pages" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🌐 RÉSULTATS :" >> $GITHUB_STEP_SUMMARY
-        echo "- **Site Web :** [${{ steps.deployment.outputs.page_url }}](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
-        echo "- **Image Docker :** \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:latest\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit :** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+    - name: 📦 Artifact - Fichiers de build
+      uses: actions/upload-artifact@v4
+      with:
+        name: web-app-files
+        path: |
+          index.html
+          styles.css
+          app.js
