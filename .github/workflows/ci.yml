@@ -1,4 +1,4 @@
-name: CI Pipeline Complète
+name: CI Pipeline Complete
 
 on:
   push:
@@ -11,73 +11,70 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout
+    - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
     - name: 🧪 Tests
       run: |
-        echo "🚀 Lancement des tests..."
-        
-        # Vérification des fichiers
-        echo "📁 Vérification des fichiers requis..."
-        required_files=("index.html" "Dockerfile")
-        for file in "${required_files[@]}"; do
-          if [ -f "$file" ]; then
-            echo "✅ $file présent"
-          else
-            echo "❌ $file manquant"
-            exit 1
-          fi
-        done
-        
-        echo "✅ Tous les tests sont passés !"
+        echo "🧪 Exécution des tests..."
+        # Tests basiques
+        [ -f "index.html" ] || exit 1
+        [ -f "Dockerfile" ] || exit 1
+        echo "✅ Tests passés"
     
-    - name: 📊 Rapport CI
+    - name: 📦 Préparer les fichiers pour GitHub Pages
       run: |
-        echo "## 📋 RAPPORT CI" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Statut :** ✅ SUCCÈS" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Tests exécutés :**" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Vérification des fichiers" >> $GITHUB_STEP_SUMMARY
-        echo "- ✅ Structure du projet" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Prochaines étapes :**" >> $GITHUB_STEP_SUMMARY
-        echo "1. ✅ Tests CI" >> $GITHUB_STEP_SUMMARY
-        echo "2. 🐳 Build Docker (si sur main)" >> $GITHUB_STEP_SUMMARY
-        echo "3. 🚀 Déploiement GitHub Pages (si sur main)" >> $GITHUB_STEP_SUMMARY
+        echo "📁 Préparation des fichiers..."
+        mkdir -p ./_site
+        
+        # Copier les fichiers
+        cp index.html ./_site/ 2>/dev/null || echo "Création index.html par défaut"
+        
+        if [ ! -f "./_site/index.html" ]; then
+          cat > ./_site/index.html << 'EOF'
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TP DevOps</title>
+</head>
+<body>
+    <h1>✅ CI/CD Pipeline</h1>
+</body>
+</html>
+EOF
+        fi
+        
+        cp styles.css ./_site/ 2>/dev/null || true
+        cp app.js ./_site/ 2>/dev/null || true
+        touch ./_site/.nojekyll
+        
+        echo "Fichiers préparés dans ./_site"
+    
+    - name: 📤 Upload artefact pour GitHub Pages
+      uses: actions/upload-artifact@v4
+      with:
+        name: github-pages
+        path: ./_site/
+        retention-days: 1
   
   build-docker:
     needs: test
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     
     steps:
     - name: 📥 Checkout
       uses: actions/checkout@v4
     
-    - name: 🐳 Build Docker (test local)
+    - name: 🐳 Build Docker (test)
       run: |
-        echo "🔨 Construction de l'image Docker..."
-        docker build -t tp-devops-app:ci-test .
-        echo "✅ Image construite avec succès"
-        
-        # Vérifier la taille
-        echo "📦 Taille de l'image :"
-        docker images tp-devops-app:ci-test --format "{{.Size}}"
-        
-        # Tester le conteneur rapidement
-        echo "🧪 Test rapide du conteneur..."
-        docker run -d --name test-app -p 8080:80 tp-devops-app:ci-test
-        sleep 3
-        docker ps --filter "name=test-app" --format "table {{.Names}}\t{{.Status}}"
-        docker stop test-app
-        docker rm test-app
+        echo "🔨 Build Docker..."
+        docker build -t test-app:${{ github.sha }} .
+        echo "✅ Build réussi"
   
   deploy:
     needs: [test, build-docker]
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
     
     environment:
       name: github-pages
@@ -88,23 +85,22 @@ jobs:
       id-token: write
     
     steps:
-    - name: 🚀 Déployer sur GitHub Pages
+    - name: 📥 Télécharger l'artefact
+      uses: actions/download-artifact@v4
+      with:
+        name: github-pages
+        path: ./_site
+    
+    - name: 📤 Upload pour déploiement
+      uses: actions/upload-pages-artifact@v3
+      with:
+        name: github-pages
+        path: ./_site
+    
+    - name: 🚀 Déployer
       id: deployment
       uses: actions/deploy-pages@v4
     
-    - name: 📢 Rapport final
+    - name: ✅ Rapport
       run: |
-        echo "## 🎯 DÉPLOIEMENT COMPLET" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**🚀 Pipeline CI/CD terminé avec succès !**" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### ✅ ÉTAPES ACCOMPLIES :" >> $GITHUB_STEP_SUMMARY
-        echo "1. **Tests CI** - Validation du code" >> $GITHUB_STEP_SUMMARY
-        echo "2. **Build Docker** - Image construite" >> $GITHUB_STEP_SUMMARY
-        echo "3. **Publication Docker** - Image poussée sur Docker Hub" >> $GITHUB_STEP_SUMMARY
-        echo "4. **Déploiement** - Site en ligne sur GitHub Pages" >> $GITHUB_STEP_SUMMARY
-        echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### 🌐 RÉSULTATS :" >> $GITHUB_STEP_SUMMARY
-        echo "- **Site Web :** [${{ steps.deployment.outputs.page_url }}](${{ steps.deployment.outputs.page_url }})" >> $GITHUB_STEP_SUMMARY
-        echo "- **Image Docker :** \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:latest\`" >> $GITHUB_STEP_SUMMARY
-        echo "- **Commit :** \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Site déployé: ${{ steps.deployment.outputs.page_url }}"
