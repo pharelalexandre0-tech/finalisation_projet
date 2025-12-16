@@ -1,0 +1,62 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Permissions pour le déploiement
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 Checkout du code
+      uses: actions/checkout@v4
+    
+    - name: 📦 Préparation des fichiers
+      run: |
+        echo "📁 Préparation des fichiers pour GitHub Pages..."
+        # Créer un répertoire de build
+        mkdir -p ./dist
+        
+        # Copier les fichiers
+        cp index.html ./dist/
+        cp styles.css ./dist/
+        cp app.js ./dist/
+        
+        # Ajouter un fichier de version
+        echo "Version: ${{ github.sha }}" > ./dist/version.txt
+        echo "Date: $(date)" >> ./dist/version.txt
+    
+    - name: 📤 Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: ./dist
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: 🚀 Déploiement
+      id: deployment
+      uses: actions/deploy-pages@v4
+    
+    - name: ✅ Status GitHub
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: 'success',
+            context: 'GitHub Pages Deployment',
+            description: 'Déployé avec succès sur GitHub Pages',
+            target_url: `https://${context.repo.owner}.github.io/${context.repo.repo}`
+          })
