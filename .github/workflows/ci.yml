@@ -1,4 +1,4 @@
-name: CI Pipeline Complete
+name: CI Pipeline
 
 on:
   push:
@@ -11,96 +11,42 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - name: 📥 Checkout du code
+    - name: 📥 Checkout
       uses: actions/checkout@v4
     
     - name: 🧪 Tests
       run: |
-        echo "🧪 Exécution des tests..."
-        # Tests basiques
+        echo "🧪 Tests unitaires..."
         [ -f "index.html" ] || exit 1
         [ -f "Dockerfile" ] || exit 1
         echo "✅ Tests passés"
     
-    - name: 📦 Préparer les fichiers pour GitHub Pages
+    - name: 🐳 Build Docker
       run: |
-        echo "📁 Préparation des fichiers..."
-        mkdir -p ./_site
-        
-        # Copier les fichiers
-        cp index.html ./_site/ 2>/dev/null || echo "Création index.html par défaut"
-        
-        if [ ! -f "./_site/index.html" ]; then
-          cat > ./_site/index.html << 'EOF'
-<!DOCTYPE html>
-<html>
-<head>
-    <title>TP DevOps</title>
-</head>
-<body>
-    <h1>✅ CI/CD Pipeline</h1>
-</body>
-</html>
-EOF
-        fi
-        
-        cp styles.css ./_site/ 2>/dev/null || true
-        cp app.js ./_site/ 2>/dev/null || true
-        touch ./_site/.nojekyll
-        
-        echo "Fichiers préparés dans ./_site"
+        echo "🔨 Build Docker image..."
+        docker build -t tp-devops-app:ci-${{ github.sha }} .
+        echo "✅ Docker image built"
     
-    - name: 📤 Upload artefact pour GitHub Pages
-      uses: actions/upload-artifact@v4
-      with:
-        name: github-pages
-        path: ./_site/
-        retention-days: 1
+    - name: 📊 Rapport CI
+      run: |
+        echo "## 📋 CI REPORT" >> $GITHUB_STEP_SUMMARY
+        echo "**Status:** ✅ SUCCESS" >> $GITHUB_STEP_SUMMARY
+        echo "**Tests:** Passed" >> $GITHUB_STEP_SUMMARY
+        echo "**Docker:** Image built" >> $GITHUB_STEP_SUMMARY
   
-  build-docker:
+  # Badge de statut CI
+  ci-badge:
     needs: test
     runs-on: ubuntu-latest
+    if: always()
     
     steps:
-    - name: 📥 Checkout
-      uses: actions/checkout@v4
-    
-    - name: 🐳 Build Docker (test)
-      run: |
-        echo "🔨 Build Docker..."
-        docker build -t test-app:${{ github.sha }} .
-        echo "✅ Build réussi"
-  
-  deploy:
-    needs: [test, build-docker]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    
-    permissions:
-      pages: write
-      id-token: write
-    
-    steps:
-    - name: 📥 Télécharger l'artefact
-      uses: actions/download-artifact@v4
+    - name: 📛 Update CI Badge
+      uses: schneegans/dynamic-badges-action@v1.7.0
       with:
-        name: github-pages
-        path: ./_site
-    
-    - name: 📤 Upload pour déploiement
-      uses: actions/upload-pages-artifact@v3
-      with:
-        name: github-pages
-        path: ./_site
-    
-    - name: 🚀 Déployer
-      id: deployment
-      uses: actions/deploy-pages@v4
-    
-    - name: ✅ Rapport
-      run: |
-        echo "✅ Site déployé: ${{ steps.deployment.outputs.page_url }}"
+        auth: ${{ secrets.GIST_TOKEN }}
+        gistID: YOUR_GIST_ID
+        filename: ci-status.json
+        label: CI
+        message: ${{ needs.test.result }}
+        color: ${{ needs.test.result == 'success' && 'green' || 'red' }}
