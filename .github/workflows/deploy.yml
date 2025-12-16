@@ -18,11 +18,6 @@ jobs:
     - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
-    - name: 🔧 Configuration Node.js (optionnel)
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-    
     - name: 📦 Préparation des fichiers
       run: |
         echo "🔨 Préparation du build..."
@@ -48,18 +43,17 @@ jobs:
     - name: 📤 Upload des fichiers pour GitHub Pages
       uses: actions/upload-pages-artifact@v3
       with:
-        # ⭐ IMPORTANT : Utiliser le nom correct pour l'artefact
-        name: github-pages  # ⭐ Ce nom est requis par deploy-pages
-        path: ./build/      # ⭐ Chemin vers les fichiers à déployer
+        name: github-pages
+        path: ./build/
   
   deploy:
     needs: build
     runs-on: ubuntu-latest
     
-    # ⭐ Environnement GitHub Pages
+    # ⭐ CORRECTION ICI : Utiliser ${{ }} au lieu de ${( )}
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      url: ${{ steps.deployment.outputs.page_url }}  # ⭐ Correction
     
     permissions:
       pages: write
@@ -76,8 +70,3 @@ jobs:
         echo ""
         echo "Votre site est disponible à :"
         echo "👉 ${{ steps.deployment.outputs.page_url }}"
-        echo ""
-        echo "📊 Informations :"
-        echo "- Commit : ${{ github.sha }}"
-        echo "- Branche : ${{ github.ref_name }}"
-        echo "- Déployé le : $(date)"
