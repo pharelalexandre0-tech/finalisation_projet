@@ -11,20 +11,73 @@ permissions:
   id-token: write
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    
     
     steps:
     - name: 📥 Checkout du code
       uses: actions/checkout@v4
     
+    - name: 🔧 Configuration Node.js (optionnel)
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    - name: 📦 Préparation des fichiers
+      run: |
+        echo "🔨 Préparation du build..."
+        
+        # Créer le répertoire de build
+        mkdir -p ./build
+        
+        # Copier tous les fichiers nécessaires
+        cp index.html ./build/
+        cp styles.css ./build/
+        cp app.js ./build/
+        
+        # Optionnel: Créer un fichier .nojekyll pour désactiver Jekyll
+        touch ./build/.nojekyll
+        
+        # Créer un fichier de version
+        echo "Build: ${{ github.sha }}" > ./build/version.txt
+        echo "Date: $(date)" >> ./build/version.txt
+        echo "Repository: ${{ github.repository }}" >> ./build/version.txt
+        
+        echo "✅ Build préparé"
+    
+    - name: 📤 Upload des fichiers pour GitHub Pages
+      uses: actions/upload-pages-artifact@v3
+      with:
+        # ⭐ IMPORTANT : Utiliser le nom correct pour l'artefact
+        name: github-pages  # ⭐ Ce nom est requis par deploy-pages
+        path: ./build/      # ⭐ Chemin vers les fichiers à déployer
+  
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    
+    # ⭐ Environnement GitHub Pages
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    permissions:
+      pages: write
+      id-token: write
+    
+    steps:
     - name: 🚀 Déployer sur GitHub Pages
       id: deployment
       uses: actions/deploy-pages@v4
     
-    - name: 📢 Afficher l'URL de déploiement
+    - name: ✅ Afficher l'URL
       run: |
-        echo "✅ Déploiement réussi!"
-        echo "Votre site est disponible à:"
-        echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
+        echo "🎉 Déploiement réussi !"
+        echo ""
+        echo "Votre site est disponible à :"
+        echo "👉 ${{ steps.deployment.outputs.page_url }}"
+        echo ""
+        echo "📊 Informations :"
+        echo "- Commit : ${{ github.sha }}"
+        echo "- Branche : ${{ github.ref_name }}"
+        echo "- Déployé le : $(date)"
