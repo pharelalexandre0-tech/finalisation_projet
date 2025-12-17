@@ -13,89 +13,86 @@ jobs:
     - name: 📥 Checkout
       uses: actions/checkout@v4
     
-    - name: 🧹 Nettoyer avant build
-      run: |
-        echo "🧹 Suppression des anciennes images..."
-        docker system prune -a -f 2>/dev/null || true
-        echo "✅ Système Docker nettoyé"
-    
     - name: 🔐 Login Docker Hub
       uses: docker/login-action@v3
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: 🐳 Build NOUVEAU sans cache
+    - name: 🐳 Build & Push
       run: |
-        echo "=== BUILD NOUVEAU SANS CACHE ==="
-        echo ""
-        
-        DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
-        IMAGE_NAME="$DOCKER_USER/tp-devops-app"
-        
-        echo "📅 Date actuelle : $(date)"
-        echo "🔄 Commit : ${{ github.sha }}"
-        echo ""
-        
-        # FORCER un build COMPLÈTEMENT NOUVEAU
-        echo "🏗️ Construction COMPLÈTE de l'image..."
-        docker build \
-          --no-cache \
-          --pull \
-          --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
-          --build-arg VCS_REF=${{ github.sha }} \
-          -t $IMAGE_NAME:latest \
-          -t $IMAGE_NAME:${{ github.sha }} \
-          -t $IMAGE_NAME:build-$(date +%Y%m%d-%H%M%S) \
-          .
-        
-        echo ""
-        echo "✅ Image construite avec :"
-        echo "   - Pas de cache (--no-cache)"
-        echo "   - Images de base mises à jour (--pull)"
-        echo "   - Métadonnées de build (BUILD_DATE, VCS_REF)"
-        echo ""
-        
-        echo "📊 Informations de la NOUVELLE image :"
-        docker images $IMAGE_NAME --format "table {{.Repository}}\t{{.Tag}}\t{{.CreatedAt}}\t{{.Size}}"
+        IMAGE="${{ secrets.DOCKER_USERNAME }}/tp-devops-app"
+        docker build -t $IMAGE:latest .
+        docker push $IMAGE:latest
+        echo "✅ Image publiée"
     
-    - name: 📤 Push vers Docker Hub
-      run: |
-        echo "=== PUBLICATION DOCKER HUB ==="
-        echo ""
-        
-        IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/tp-devops-app"
-        
-        echo "📤 Envoi des NOUVELLES images..."
-        docker push $IMAGE_NAME:latest
-        docker push $IMAGE_NAME:${{ github.sha }}
-        
-        # Push le tag avec la date aussi
-        LATEST_TAG=$(docker images $IMAGE_NAME --format "{{.Tag}}" | grep "build-" | head -1)
-        if [ ! -z "$LATEST_TAG" ]; then
-          docker push $IMAGE_NAME:$LATEST_TAG
-        fi
-        
-        echo ""
-        echo "🎉 NOUVELLES images publiées !"
-        echo "🆕 Dernière version : $IMAGE_NAME:latest"
-        echo "📅 Build date : $(date)"
-        echo "🔗 Docker Hub : https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/tp-devops-app"
+    - name: ✅ Notification GitHub Status - DOCKER PUBLISH
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: 'success',
+            context: 'CD/Docker Publish',
+            description: 'Image publiée sur Docker Hub',
+            target_url: `https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/tp-devops-app`
+          });
+  
+  deploy:
+    needs: docker-publish
+    runs-on: ubuntu-latest
     
-    - name: 📝 Vérifier le contenu
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    
+    permissions:
+      pages: write
+      id-token: write
+    
+    steps:
+    - name: 📥 Checkout
+      uses: actions/checkout@v4
+    
+    - name: 🛠️ Build site
       run: |
-        echo "=== VÉRIFICATION DU CONTENU ==="
-        echo ""
-        
-        IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/tp-devops-app"
-        
-        # Créer un conteneur temporaire pour vérifier
-        docker run --rm $IMAGE_NAME:latest ls -la /usr/share/nginx/html/
-        echo ""
-        
-        # Vérifier la date du fichier index.html dans l'image
-        echo "📄 Contenu de index.html dans l'image :"
-        docker run --rm $IMAGE_NAME:latest cat /usr/share/nginx/html/index.html | head -20
-        
-        echo ""
-        echo "✅ Vérification terminée"
+        mkdir -p ./public
+        [ -f "index.html" ] && cp index.html ./public/ || echo "Création index.html"
+        touch ./public/.nojekyll
+    
+    - name: 📤 Upload
+      uses: actions/upload-pages-artifact@v3
+      with:
+        name: github-pages
+        path: ./public/
+    
+    - name: 🚀 Deploy
+      id: deployment
+      uses: actions/deploy-pages@v4
+    
+    - name: ✅ Notification GitHub Status - DEPLOYMENT
+      uses: actions/github-script@v7
+      with:
+        script: |
+          await github.rest.repos.createCommitStatus({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            sha: context.sha,
+            state: 'success',
+            context: 'CD/GitHub Pages',
+            description: 'Site déployé sur GitHub Pages',
+            target_url: '${{ steps.deployment.outputs.page_url }}'
+          });
+    
+    - name: 📢 Notification finale
+      run: |
+        echo "## 🎯 DÉPLOIEMENT COMPLET" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**✅ Toutes les notifications GitHub Status ont été envoyées :**" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "1. ✅ CI/Tests - Tests unitaires" >> $GITHUB_STEP_SUMMARY
+        echo "2. ✅ CI/Docker Build - Construction Docker" >> $GITHUB_STEP_SUMMARY
+        echo "3. ✅ CD/Docker Publish - Publication Docker Hub" >> $GITHUB_STEP_SUMMARY
+        echo "4. ✅ CD/GitHub Pages - Déploiement site web" >> $GITHUB_STEP_SUMMARY
