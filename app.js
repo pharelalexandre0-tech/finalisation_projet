@@ -1,364 +1,463 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // Configuration des planètes avec données réelles
+    const planetsData = {
+        sun: {
+            name: "Soleil",
+            type: "Étoile",
+            diameter: "1 391 000 km",
+            mass: "1.989 × 10³⁰ kg",
+            temperature: "5 500°C (surface)",
+            description: "Notre étoile, source d'énergie du système solaire"
+        },
+        mercury: {
+            name: "Mercure",
+            type: "Planète tellurique",
+            diameter: "4 879 km",
+            distance: "57.9 millions km",
+            period: "88 jours",
+            temperature: "-173°C à 427°C",
+            description: "La plus petite et la plus proche du Soleil"
+        },
+        venus: {
+            name: "Vénus",
+            type: "Planète tellurique",
+            diameter: "12 104 km",
+            distance: "108.2 millions km",
+            period: "225 jours",
+            temperature: "462°C",
+            description: "L'atmosphère la plus chaude du système solaire"
+        },
+        earth: {
+            name: "Terre",
+            type: "Planète tellurique",
+            diameter: "12 756 km",
+            distance: "149.6 millions km",
+            period: "365.25 jours",
+            temperature: "15°C (moyenne)",
+            description: "Notre planète, la seule connue à abriter la vie"
+        },
+        mars: {
+            name: "Mars",
+            type: "Planète tellurique",
+            diameter: "6 792 km",
+            distance: "227.9 millions km",
+            period: "687 jours",
+            temperature: "-63°C (moyenne)",
+            description: "La planète rouge, cible d'exploration spatiale"
+        },
+        jupiter: {
+            name: "Jupiter",
+            type: "Géante gazeuse",
+            diameter: "142 984 km",
+            distance: "778.5 millions km",
+            period: "12 ans",
+            temperature: "-108°C",
+            description: "La plus grande planète du système solaire"
+        },
+        saturn: {
+            name: "Saturne",
+            type: "Géante gazeuse",
+            diameter: "120 536 km",
+            distance: "1.43 milliards km",
+            period: "29 ans",
+            temperature: "-139°C",
+            description: "Célèbre pour ses anneaux spectaculaires"
+        },
+        uranus: {
+            name: "Uranus",
+            type: "Géante glacée",
+            diameter: "51 118 km",
+            distance: "2.87 milliards km",
+            period: "84 ans",
+            temperature: "-197°C",
+            description: "Planète inclinée sur son axe de rotation"
+        },
+        neptune: {
+            name: "Neptune",
+            type: "Géante glacée",
+            diameter: "49 528 km",
+            distance: "4.5 milliards km",
+            period: "165 ans",
+            temperature: "-201°C",
+            description: "La planète la plus éloignée du Soleil"
+        }
+    };
+
+    // Variables de simulation
+    let simulationSpeed = 1;
+    let isPlaying = true;
+    let rotationAngles = {
+        mercury: 0,
+        venus: 0,
+        earth: 0,
+        mars: 0,
+        jupiter: 0,
+        saturn: 0,
+        uranus: 0,
+        neptune: 0
+    };
+    let simulationTime = 0;
+    let rotationCount = 0;
+    let distanceTraveled = 0;
+    let cometPasses = 0;
+    let selectedPlanet = null;
+    let showOrbits = true;
+    let zoomLevel = 1;
+    let isNightMode = false;
+
     // Éléments du DOM
-    const statusText = document.getElementById('status-text');
-    const statusBadge = document.getElementById('status-badge');
-    const versionElement = document.getElementById('version');
-    const timestampElement = document.getElementById('timestamp');
-    const triggerDeployBtn = document.getElementById('trigger-deploy');
-    const viewLogsBtn = document.getElementById('view-logs');
+    const speedControl = document.getElementById('speed-control');
+    const speedValue = document.getElementById('speed-value');
+    const playPauseBtn = document.getElementById('play-pause');
+    const resetViewBtn = document.getElementById('reset-view');
+    const toggleOrbitsBtn = document.getElementById('toggle-orbits');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const nightModeBtn = document.getElementById('night-mode');
+    const selectedPlanetTitle = document.getElementById('selected-planet');
+    const planetStats = document.getElementById('planet-stats');
+    const simulationTimer = document.getElementById('simulation-timer');
+    const rotationCountEl = document.getElementById('rotation-count');
+    const distanceTraveledEl = document.getElementById('distance-traveled');
+    const cometPassesEl = document.getElementById('comet-passes');
+    const universeBg = document.getElementById('universe-bg');
+    const sun = document.getElementById('sun');
+    const comet = document.getElementById('comet');
+    const stars = document.getElementById('stars');
+    const creditsModal = document.getElementById('credits-modal');
+    const helpModal = document.getElementById('help-modal');
+    const fullscreenBtn = document.getElementById('fullscreen');
 
-    // États possibles du pipeline
-    const statuses = [
-        { text: "Exécution en cours", badgeClass: "status-warning", icon: "fa-sync-alt" },
-        { text: "Succès", badgeClass: "status-success", icon: "fa-check-circle" },
-        { text: "Échec", badgeClass: "status-danger", icon: "fa-exclamation-circle" }
-    ];
-
-    // Versions simulées
-    const versions = ["v2.1.4", "v2.1.5", "v2.2.0", "v2.2.1"];
-
-    // Fonction pour simuler un changement de statut
-    function simulateStatusChange() {
-        // Changer aléatoirement le statut toutes les 10 secondes
-        setInterval(() => {
-            const randomStatus = statuses[Math.floor(Math.random() * statuses.length)];
-
-            statusText.textContent = randomStatus.text;
-            statusBadge.className = "status-badge " + randomStatus.badgeClass;
-            statusBadge.innerHTML = `<i class="fas ${randomStatus.icon}"></i> ${randomStatus.text}`;
-
-            // Si le statut est "Succès", mettre à jour la version et l'heure
-            if (randomStatus.text === "Succès") {
-                const newVersion = versions[Math.floor(Math.random() * versions.length)];
-                versionElement.textContent = newVersion;
-
-                const now = new Date();
-                timestampElement.textContent = now.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-
-                // Ajouter un nouvel élément à l'historique
-                const historyList = document.getElementById('history-list');
-                const newHistoryItem = document.createElement('div');
-                newHistoryItem.className = 'history-item';
-                newHistoryItem.innerHTML = `
-                    <span class="history-version">${newVersion}</span>
-                    <span class="history-time">${now.toLocaleDateString('fr-FR')}, ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-                    <span class="history-status status-success">Succès</span>
-                `;
-
-                // Insérer au début de la liste
-                historyList.insertBefore(newHistoryItem, historyList.firstChild);
-
-                // Limiter à 4 éléments dans l'historique
-                if (historyList.children.length > 4) {
-                    historyList.removeChild(historyList.lastChild);
-                }
-            }
-        }, 10000); // 10 secondes
+    // Initialiser les étoiles
+    function initStars() {
+        for (let i = 0; i < 200; i++) {
+            const star = document.createElement('div');
+            star.className = 'star';
+            star.style.width = `${Math.random() * 3 + 1}px`;
+            star.style.height = star.style.width;
+            star.style.left = `${Math.random() * 100}%`;
+            star.style.top = `${Math.random() * 100}%`;
+            star.style.opacity = Math.random() * 0.5 + 0.2;
+            star.style.animationDelay = `${Math.random() * 3}s`;
+            stars.appendChild(star);
+        }
     }
 
-    // Fonction pour mettre à jour les métriques
-    function updateMetrics() {
-        const metrics = {
-            'build-time': ['2.4m', '2.3m', '2.5m', '2.2m'],
-            'success-rate': ['98%', '97%', '99%', '98%'],
-            'deploy-count': ['142', '143', '144', '145'],
-            'test-coverage': ['92%', '91%', '93%', '92%']
+    // Mettre à jour l'affichage d'une planète
+    function updatePlanetDisplay(planetId) {
+        const planet = planetsData[planetId];
+        if (!planet) return;
+
+        selectedPlanet = planetId;
+        selectedPlanetTitle.textContent = planet.name;
+
+        let statsHTML = `
+            <div style="margin-bottom: 15px; font-size: 1.1rem; color: #00ff88;">
+                ${planet.description}
+            </div>
+            <div style="display: grid; gap: 10px;">
+        `;
+
+        if (planetId === 'sun') {
+            statsHTML += `
+                <div><strong>Type :</strong> ${planet.type}</div>
+                <div><strong>Diamètre :</strong> ${planet.diameter}</div>
+                <div><strong>Masse :</strong> ${planet.mass}</div>
+                <div><strong>Température :</strong> ${planet.temperature}</div>
+            `;
+        } else {
+            statsHTML += `
+                <div><strong>Type :</strong> ${planet.type}</div>
+                <div><strong>Diamètre :</strong> ${planet.diameter}</div>
+                <div><strong>Distance du Soleil :</strong> ${planet.distance}</div>
+                <div><strong>Période orbitale :</strong> ${planet.period}</div>
+                <div><strong>Température :</strong> ${planet.temperature}</div>
+            `;
+        }
+
+        statsHTML += `</div>`;
+        planetStats.innerHTML = statsHTML;
+
+        // Surligner la planète sélectionnée
+        document.querySelectorAll('.planet').forEach(p => {
+            p.style.boxShadow = '';
+        });
+
+        const selectedPlanetEl = document.getElementById(planetId);
+        if (selectedPlanetEl) {
+            selectedPlanetEl.style.boxShadow = '0 0 30px #00ff88';
+        }
+    }
+
+    // Animer les planètes
+    function animatePlanets() {
+        if (!isPlaying) return;
+
+        // Vitesses orbitales relatives (jours terrestres pour une orbite complète)
+        const orbitalSpeeds = {
+            mercury: 0.24,
+            venus: 0.62,
+            earth: 1,
+            mars: 1.88,
+            jupiter: 11.86,
+            saturn: 29.46,
+            uranus: 84.01,
+            neptune: 164.8
         };
 
-        setInterval(() => {
-            for (const [metricId, values] of Object.entries(metrics)) {
-                const element = document.getElementById(metricId);
-                if (element) {
-                    const randomValue = values[Math.floor(Math.random() * values.length)];
-                    element.textContent = randomValue;
-                }
+        // Mettre à jour les angles de rotation
+        Object.keys(rotationAngles).forEach(planet => {
+            rotationAngles[planet] += (0.5 / orbitalSpeeds[planet]) * simulationSpeed;
+            rotationAngles[planet] %= 360;
+
+            const planetContainer = document.querySelector(`[data-planet="${planet}"]`);
+            if (planetContainer) {
+                planetContainer.style.transform = `rotate(${rotationAngles[planet]}deg)`;
             }
-        }, 8000); // 8 secondes
+        });
+
+        // Mettre à jour la distance parcourue (estimation)
+        distanceTraveled += 1000 * simulationSpeed;
+        distanceTraveledEl.textContent = formatNumber(Math.round(distanceTraveled));
+
+        // Animer la comète
+        animateComet();
     }
 
-    // Simulation du déclenchement d'un déploiement
-    triggerDeployBtn.addEventListener('click', function () {
-        // Mettre à jour le statut
-        statusText.textContent = "Exécution en cours";
-        statusBadge.className = "status-badge status-warning";
-        statusBadge.innerHTML = '<i class="fas fa-sync-alt"></i> En cours';
+    // Animer la comète
+    function animateComet() {
+        const time = Date.now() * 0.001;
+        const cometX = Math.cos(time * 0.3) * 400 + 50;
+        const cometY = Math.sin(time * 0.5) * 300 + 50;
 
-        // Afficher une notification
-        showNotification("Déploiement déclenché avec succès !");
+        comet.style.left = `${cometX}%`;
+        comet.style.top = `${cometY}%`;
 
-        // Désactiver le bouton pendant le déploiement
-        triggerDeployBtn.disabled = true;
-        triggerDeployBtn.innerHTML = '<i class="fas fa-sync-alt fa-spin"></i> Déploiement en cours...';
+        // Compteur de passages
+        if (Math.sin(time * 0.3) > 0.99) {
+            cometPasses++;
+            cometPassesEl.textContent = cometPasses;
 
-        // Simuler un délai avant la fin du déploiement
+            // Effet de traînée
+            createCometTrail(cometX, cometY);
+        }
+    }
+
+    // Créer une traînée de comète
+    function createCometTrail(x, y) {
+        const trail = document.createElement('div');
+        trail.className = 'comet-trail';
+        trail.style.cssText = `
+            position: absolute;
+            width: 100px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00ffff, transparent);
+            left: ${x}%;
+            top: ${y}%;
+            transform-origin: left center;
+            transform: rotate(${Math.random() * 360}deg);
+            opacity: 0.7;
+            filter: blur(1px);
+        `;
+        universeBg.appendChild(trail);
+
         setTimeout(() => {
-            const randomStatus = Math.random() > 0.2 ? statuses[1] : statuses[2]; // 80% de succès
-            statusText.textContent = randomStatus.text;
-            statusBadge.className = "status-badge " + randomStatus.badgeClass;
-            statusBadge.innerHTML = `<i class="fas ${randomStatus.icon}"></i> ${randomStatus.text}`;
-
-            // Réactiver le bouton
-            triggerDeployBtn.disabled = false;
-            triggerDeployBtn.innerHTML = '<i class="fas fa-play-circle"></i> Déclencher un déploiement';
-
-            if (randomStatus.text === "Succès") {
-                const newVersion = versions[Math.floor(Math.random() * versions.length)];
-                versionElement.textContent = newVersion;
-
-                const now = new Date();
-                timestampElement.textContent = now.toLocaleTimeString('fr-FR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-
-                showNotification(`Déploiement réussi ! Version ${newVersion} déployée.`);
-            } else {
-                showNotification("Échec du déploiement. Consultez les logs pour plus d'informations.", "error");
+            if (trail.parentNode) {
+                trail.parentNode.removeChild(trail);
             }
-        }, 5000); // 5 secondes de simulation
+        }, 2000);
+    }
+
+    // Formater les grands nombres
+    function formatNumber(num) {
+        if (num >= 1000000) {
+            return (num / 1000000).toFixed(1) + 'M';
+        }
+        if (num >= 1000) {
+            return (num / 1000).toFixed(1) + 'K';
+        }
+        return num.toString();
+    }
+
+    // Mettre à jour le timer
+    function updateTimer() {
+        simulationTime++;
+
+        const minutes = Math.floor(simulationTime / 60);
+        const seconds = simulationTime % 60;
+
+        simulationTimer.textContent =
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+
+        // Compter les rotations complètes
+        if (simulationTime % 60 === 0) {
+            rotationCount++;
+            rotationCountEl.textContent = rotationCount;
+        }
+    }
+
+    // Gestionnaires d'événements
+    speedControl.addEventListener('input', function () {
+        simulationSpeed = parseFloat(this.value);
+        speedValue.textContent = `${simulationSpeed}x`;
     });
 
-    // Simulation de la visualisation des logs
-    viewLogsBtn.addEventListener('click', function () {
-        showNotification("Ouverture des logs du dernier déploiement...");
+    playPauseBtn.addEventListener('click', function () {
+        isPlaying = !isPlaying;
 
-        // Simulation d'une fenêtre de logs
-        setTimeout(() => {
-            const logContent = `
-[INFO] Démarrage du pipeline CI/CD
-[INFO] Clonage du repository... OK
-[INFO] Installation des dépendances... OK
-[INFO] Exécution des tests unitaires... 152/152 tests passés
-[INFO] Build de l'image Docker... OK
-[INFO] Publication sur le registry... OK
-[INFO] Déploiement sur les serveurs de production... OK
-[SUCCESS] Déploiement terminé avec succès en 2m 24s
-            `;
-
-            // Créer une modal pour afficher les logs
-            showLogModal(logContent);
-        }, 500);
-    });
-
-    // Fonction pour afficher une notification
-    function showNotification(message, type = "success") {
-        // Créer l'élément de notification
-        const notification = document.createElement('div');
-        notification.className = 'notification';
-
-        if (type === "success") {
-            notification.style.backgroundColor = "var(--success)";
+        if (isPlaying) {
+            this.innerHTML = '<i class="fas fa-pause"></i> Pause';
+            this.classList.remove('active');
         } else {
-            notification.style.backgroundColor = "var(--danger)";
+            this.innerHTML = '<i class="fas fa-play"></i> Lecture';
+            this.classList.add('active');
         }
+    });
 
-        notification.innerHTML = `
-            <i class="fas ${type === "success" ? "fa-check-circle" : "fa-exclamation-circle"}"></i>
-            <span>${message}</span>
-        `;
+    resetViewBtn.addEventListener('click', function () {
+        rotationAngles = {
+            mercury: 0,
+            venus: 0,
+            earth: 0,
+            mars: 0,
+            jupiter: 0,
+            saturn: 0,
+            uranus: 0,
+            neptune: 0
+        };
 
-        document.body.appendChild(notification);
+        simulationTime = 0;
+        rotationCount = 0;
+        distanceTraveled = 0;
+        cometPasses = 0;
 
-        // Retirer la notification après 5 secondes
+        rotationCountEl.textContent = '0';
+        distanceTraveledEl.textContent = '0';
+        cometPassesEl.textContent = '0';
+
+        // Réappliquer les transformations
+        Object.keys(rotationAngles).forEach(planet => {
+            const planetContainer = document.querySelector(`[data-planet="${planet}"]`);
+            if (planetContainer) {
+                planetContainer.style.transform = `rotate(${rotationAngles[planet]}deg)`;
+            }
+        });
+    });
+
+    toggleOrbitsBtn.addEventListener('click', function () {
+        showOrbits = !showOrbits;
+
+        document.querySelectorAll('.orbit').forEach(orbit => {
+            orbit.style.display = showOrbits ? 'block' : 'none';
+        });
+
+        this.classList.toggle('active');
+        this.innerHTML = showOrbits ?
+            '<i class="fas fa-circle"></i> Orbites' :
+            '<i class="fas fa-circle"></i> Cacher orbites';
+    });
+
+    zoomInBtn.addEventListener('click', function () {
+        zoomLevel = Math.min(zoomLevel + 0.2, 2);
+        updateZoom();
+    });
+
+    zoomOutBtn.addEventListener('click', function () {
+        zoomLevel = Math.max(zoomLevel - 0.2, 0.5);
+        updateZoom();
+    });
+
+    function updateZoom() {
+        const scale = `scale(${zoomLevel})`;
+        document.querySelectorAll('.planet-container').forEach(container => {
+            container.style.transform = `rotate(${rotationAngles[container.dataset.planet]}deg) ${scale}`;
+        });
+    }
+
+    nightModeBtn.addEventListener('click', function () {
+        isNightMode = !isNightMode;
+
+        if (isNightMode) {
+            universeBg.style.background = 'radial-gradient(circle at center, #000814 0%, #000000 100%)';
+            this.innerHTML = '<i class="fas fa-sun"></i> Mode jour';
+        } else {
+            universeBg.style.background = 'radial-gradient(circle at center, #0f172a 0%, #020617 100%)';
+            this.innerHTML = '<i class="fas fa-moon"></i> Mode nuit';
+        }
+    });
+
+    // Sélection des planètes
+    document.querySelectorAll('.planet, .planet-card').forEach(element => {
+        element.addEventListener('click', function () {
+            const planetId = this.dataset.planet || this.id;
+            updatePlanetDisplay(planetId);
+        });
+    });
+
+    // Gestion des modals
+    document.getElementById('show-credits').addEventListener('click', function () {
+        creditsModal.style.display = 'flex';
+    });
+
+    document.getElementById('show-help').addEventListener('click', function () {
+        helpModal.style.display = 'flex';
+    });
+
+    document.querySelectorAll('.close-modal').forEach(button => {
+        button.addEventListener('click', function () {
+            creditsModal.style.display = 'none';
+            helpModal.style.display = 'none';
+        });
+    });
+
+    // Plein écran
+    fullscreenBtn.addEventListener('click', function () {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen().catch(err => {
+                console.error(`Erreur plein écran: ${err.message}`);
+            });
+            this.innerHTML = '<i class="fas fa-compress"></i> Quitter plein écran';
+        } else {
+            document.exitFullscreen();
+            this.innerHTML = '<i class="fas fa-expand"></i> Plein écran';
+        }
+    });
+
+    // Fermer les modals en cliquant à l'extérieur
+    window.addEventListener('click', function (event) {
+        if (event.target === creditsModal) {
+            creditsModal.style.display = 'none';
+        }
+        if (event.target === helpModal) {
+            helpModal.style.display = 'none';
+        }
+    });
+
+    // Initialisation
+    function init() {
+        initStars();
+        updatePlanetDisplay('earth');
+
+        // Animation loop
+        setInterval(() => {
+            if (isPlaying) {
+                animatePlanets();
+            }
+        }, 50);
+
+        // Timer loop
+        setInterval(() => {
+            if (isPlaying) {
+                updateTimer();
+            }
+        }, 1000);
+
+        // Lancer une comète initiale
         setTimeout(() => {
-            notification.style.animation = "slideOut 0.3s ease-out";
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    document.body.removeChild(notification);
-                }
-            }, 300);
-        }, 5000);
+            animateComet();
+        }, 1000);
     }
 
-    // Fonction pour afficher une modal avec les logs
-    function showLogModal(content) {
-        // Créer l'overlay de la modal
-        const modalOverlay = document.createElement('div');
-        modalOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            animation: fadeIn 0.3s ease-out;
-        `;
-
-        // Créer la modal
-        const modal = document.createElement('div');
-        modal.style.cssText = `
-            background: #1e293b;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 700px;
-            max-height: 80vh;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
-        `;
-
-        modal.innerHTML = `
-            <div style="padding: 1.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: space-between; align-items: center;">
-                <h3 style="margin: 0; color: #e2e8f0;"><i class="fas fa-file-alt"></i> Logs du déploiement</h3>
-                <button id="close-modal" style="background: none; border: none; color: #94a3b8; font-size: 1.5rem; cursor: pointer;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div style="padding: 1.5rem; overflow-y: auto; max-height: 60vh; font-family: 'Roboto Mono', monospace; font-size: 0.9rem; background: #0f172a; color: #cbd5e1; white-space: pre-wrap;">
-                ${content}
-            </div>
-            <div style="padding: 1rem 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1); text-align: right;">
-                <button id="copy-logs" style="padding: 0.5rem 1rem; background: var(--primary); color: white; border: none; border-radius: 6px; cursor: pointer; font-family: 'Poppins', sans-serif;">
-                    <i class="fas fa-copy"></i> Copier les logs
-                </button>
-            </div>
-        `;
-
-        modalOverlay.appendChild(modal);
-        document.body.appendChild(modalOverlay);
-
-        // Ajouter les animations CSS si elles n'existent pas déjà
-        if (!document.querySelector('#modal-styles')) {
-            const style = document.createElement('style');
-            style.id = 'modal-styles';
-            style.textContent = `
-                @keyframes fadeIn {
-                    from { opacity: 0; }
-                    to { opacity: 1; }
-                }
-                @keyframes fadeOut {
-                    from { opacity: 1; }
-                    to { opacity: 0; }
-                }
-            `;
-            document.head.appendChild(style);
-        }
-
-        // Gestionnaire pour fermer la modal
-        modalOverlay.addEventListener('click', function (e) {
-            if (e.target === modalOverlay) {
-                closeModal();
-            }
-        });
-
-        document.getElementById('close-modal').addEventListener('click', closeModal);
-
-        // Gestionnaire pour copier les logs
-        document.getElementById('copy-logs').addEventListener('click', function () {
-            navigator.clipboard.writeText(content)
-                .then(() => {
-                    showNotification("Logs copiés dans le presse-papier !");
-                    closeModal();
-                })
-                .catch(err => {
-                    console.error('Erreur lors de la copie: ', err);
-                    showNotification("Erreur lors de la copie des logs", "error");
-                });
-        });
-
-        function closeModal() {
-            modalOverlay.style.animation = "fadeOut 0.3s ease-out";
-            setTimeout(() => {
-                if (modalOverlay.parentNode) {
-                    document.body.removeChild(modalOverlay);
-                }
-            }, 300);
-        }
-    }
-
-    // Initialiser la simulation
-    simulateStatusChange();
-    updateMetrics();
-
-    // Mettre à jour l'heure en temps réel
-    function updateTime() {
-        const now = new Date();
-        const timeString = now.toLocaleTimeString('fr-FR', {
-            hour: '2-digit',
-            minute: '2-digit',
-            second: '2-digit'
-        });
-        const dateString = now.toLocaleDateString('fr-FR', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-        });
-
-        // Mettre à jour l'heure dans le sous-titre
-        const subtitle = document.querySelector('.subtitle');
-        subtitle.textContent = `Pipeline CI/CD avec GitHub Actions • ${dateString} • ${timeString}`;
-    }
-
-    // Mettre à jour l'heure toutes les secondes
-    setInterval(updateTime, 1000);
-    updateTime(); // Initialiser
-
-    // Ajouter un effet de particules subtil en arrière-plan
-    function createParticles() {
-        const particlesContainer = document.createElement('div');
-        particlesContainer.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: -1;
-            overflow: hidden;
-        `;
-
-        document.body.appendChild(particlesContainer);
-
-        // Créer 15 particules
-        for (let i = 0; i < 15; i++) {
-            const particle = document.createElement('div');
-            particle.style.cssText = `
-                position: absolute;
-                width: ${Math.random() * 3 + 1}px;
-                height: ${Math.random() * 3 + 1}px;
-                background: rgba(96, 165, 250, ${Math.random() * 0.3 + 0.1});
-                border-radius: 50%;
-                top: ${Math.random() * 100}%;
-                left: ${Math.random() * 100}%;
-                animation: float ${Math.random() * 20 + 10}s linear infinite;
-            `;
-
-            particlesContainer.appendChild(particle);
-        }
-
-        // Ajouter l'animation CSS
-        const style = document.createElement('style');
-        style.textContent = `
-            @keyframes float {
-                0% {
-                    transform: translateY(0) translateX(0);
-                    opacity: 0;
-                }
-                10% {
-                    opacity: 0.7;
-                }
-                90% {
-                    opacity: 0.7;
-                }
-                100% {
-                    transform: translateY(-100vh) translateX(${Math.random() > 0.5 ? '-' : ''}${Math.random() * 100}px);
-                    opacity: 0;
-                }
-            }
-        `;
-        document.head.appendChild(style);
-    }
-
-    // Démarrer les particules
-    createParticles();
+    // Lancer l'application
+    init();
 });

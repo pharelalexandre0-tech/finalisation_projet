@@ -4,204 +4,251 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tableau de bord DevOps</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link
-        href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap"
-        rel="stylesheet">
+    <title>Simulateur du Système Solaire 3D</title>
     <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 
 <body>
     <div class="container">
-        <header>
-            <h1><i class="fas fa-rocket"></i> Tableau de bord DevOps</h1>
-            <p class="subtitle">Pipeline CI/CD avec GitHub Actions</p>
-            <p class="tagline">Surveillance en temps réel des builds, tests et déploiements automatisés</p>
+        <!-- En-tête avec commandes -->
+        <header class="header">
+            <div class="title-section">
+                <h1>🌌 Simulateur du Système Solaire 3D</h1>
+                <p class="subtitle">Explorez le système solaire en temps réel avec contrôle complet</p>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="speed-control">Vitesse de rotation</label>
+                    <input type="range" id="speed-control" min="0" max="10" value="1" step="0.5">
+                    <span id="speed-value">1x</span>
+                </div>
+
+                <div class="control-buttons">
+                    <button id="play-pause" class="control-btn">
+                        <i class="fas fa-play"></i> Lecture
+                    </button>
+                    <button id="reset-view" class="control-btn">
+                        <i class="fas fa-sync-alt"></i> Réinitialiser
+                    </button>
+                    <button id="toggle-orbits" class="control-btn active">
+                        <i class="fas fa-circle"></i> Orbites
+                    </button>
+                </div>
+            </div>
         </header>
 
-        <main>
-            <section>
-                <div class="card">
-                    <h2 class="card-title"><i class="fas fa-satellite-dish"></i> État du déploiement</h2>
+        <!-- Zone principale -->
+        <main class="main-content">
+            <!-- Système solaire 3D -->
+            <div class="solar-system-container">
+                <div class="universe-background" id="universe-bg">
+                    <div class="sun" id="sun"></div>
 
-                    <div class="status-container">
-                        <div class="status-indicator">
-                            <div class="status-info">
-                                <span class="status-label">Statut du pipeline</span>
-                                <span class="status-value" id="status-text">Exécution en cours</span>
-                            </div>
-                            <div class="status-badge status-warning" id="status-badge">
-                                <i class="fas fa-sync-alt"></i> En cours
+                    <!-- Planètes -->
+                    <div class="planet-container" data-planet="mercury">
+                        <div class="planet" id="mercury"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="venus">
+                        <div class="planet" id="venus"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="earth">
+                        <div class="planet" id="earth">
+                            <div class="moon"></div>
+                        </div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="mars">
+                        <div class="planet" id="mars"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="jupiter">
+                        <div class="planet" id="jupiter"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="saturn">
+                        <div class="planet" id="saturn">
+                            <div class="ring"></div>
+                        </div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="uranus">
+                        <div class="planet" id="uranus"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <div class="planet-container" data-planet="neptune">
+                        <div class="planet" id="neptune"></div>
+                        <div class="orbit"></div>
+                    </div>
+
+                    <!-- Étoiles -->
+                    <div class="stars-container" id="stars"></div>
+
+                    <!-- Comète -->
+                    <div class="comet" id="comet"></div>
+                </div>
+
+                <div class="info-display">
+                    <div class="current-planet">
+                        <h3 id="selected-planet">Sélectionnez une planète</h3>
+                        <div class="planet-stats" id="planet-stats">
+                            <p>Cliquez sur une planète pour voir ses caractéristiques</p>
+                        </div>
+                    </div>
+
+                    <div class="system-info">
+                        <div class="info-card">
+                            <h4>Planètes actives</h4>
+                            <div class="planets-counter">
+                                <span class="counter" id="active-planets">8</span>
+                                <span>/ 8</span>
                             </div>
                         </div>
 
-                        <div class="pipeline-visual">
-                            <div class="pipeline-progress"></div>
+                        <div class="info-card">
+                            <h4>Temps écoulé</h4>
+                            <div class="timer" id="simulation-timer">00:00</div>
                         </div>
+                    </div>
+                </div>
+            </div>
 
-                        <div class="info-grid">
-                            <div class="info-item">
-                                <span class="info-label">Version actuelle</span>
-                                <span class="info-value" id="version">v2.1.4</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Dernier déploiement</span>
-                                <span class="info-value" id="timestamp">12:45:23</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Environnement</span>
-                                <span class="info-value">Production</span>
-                            </div>
-                            <div class="info-item">
-                                <span class="info-label">Branch</span>
-                                <span class="info-value">main</span>
-                            </div>
+            <!-- Panneau d'information -->
+            <div class="info-panel">
+                <div class="planet-selector">
+                    <h3>Planètes du système solaire</h3>
+                    <div class="planet-grid">
+                        <div class="planet-card" data-planet="sun">
+                            <div class="planet-preview sun-preview"></div>
+                            <span>Soleil</span>
+                        </div>
+                        <div class="planet-card" data-planet="mercury">
+                            <div class="planet-preview mercury-preview"></div>
+                            <span>Mercure</span>
+                        </div>
+                        <div class="planet-card" data-planet="venus">
+                            <div class="planet-preview venus-preview"></div>
+                            <span>Vénus</span>
+                        </div>
+                        <div class="planet-card" data-planet="earth">
+                            <div class="planet-preview earth-preview"></div>
+                            <span>Terre</span>
+                        </div>
+                        <div class="planet-card" data-planet="mars">
+                            <div class="planet-preview mars-preview"></div>
+                            <span>Mars</span>
+                        </div>
+                        <div class="planet-card" data-planet="jupiter">
+                            <div class="planet-preview jupiter-preview"></div>
+                            <span>Jupiter</span>
+                        </div>
+                        <div class="planet-card" data-planet="saturn">
+                            <div class="planet-preview saturn-preview"></div>
+                            <span>Saturne</span>
+                        </div>
+                        <div class="planet-card" data-planet="uranus">
+                            <div class="planet-preview uranus-preview"></div>
+                            <span>Uranus</span>
+                        </div>
+                        <div class="planet-card" data-planet="neptune">
+                            <div class="planet-preview neptune-preview"></div>
+                            <span>Neptune</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="card deployment-history">
-                    <h2 class="card-title"><i class="fas fa-history"></i> Historique des déploiements</h2>
-                    <div id="history-list">
-                        <div class="history-item">
-                            <span class="history-version">v2.1.4</span>
-                            <span class="history-time">Aujourd'hui, 12:45</span>
-                            <span class="history-status status-success">Succès</span>
+                <div class="simulation-stats">
+                    <h3>Statistiques de simulation</h3>
+                    <div class="stats-grid">
+                        <div class="stat">
+                            <div class="stat-value" id="rotation-count">0</div>
+                            <div class="stat-label">Rotations complètes</div>
                         </div>
-                        <div class="history-item">
-                            <span class="history-version">v2.1.3</span>
-                            <span class="history-time">Hier, 18:22</span>
-                            <span class="history-status status-success">Succès</span>
+                        <div class="stat">
+                            <div class="stat-value" id="distance-traveled">0</div>
+                            <div class="stat-label">km parcourus</div>
                         </div>
-                        <div class="history-item">
-                            <span class="history-version">v2.1.2</span>
-                            <span class="history-time">15/03, 09:15</span>
-                            <span class="history-status status-danger">Échec</span>
-                        </div>
-                        <div class="history-item">
-                            <span class="history-version">v2.1.1</span>
-                            <span class="history-time">14/03, 14:30</span>
-                            <span class="history-status status-success">Succès</span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <div class="card">
-                    <h2 class="card-title"><i class="fas fa-code-branch"></i> Étapes du pipeline</h2>
-
-                    <div class="pipeline-steps">
-                        <div class="step">
-                            <div class="step-icon">
-                                <i class="fas fa-code"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">Intégration Continue (CI)</div>
-                                <div class="step-desc">Build et validation du code source</div>
-                            </div>
-                            <div class="step-status step-success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                        </div>
-
-                        <div class="step">
-                            <div class="step-icon">
-                                <i class="fas fa-vial"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">Tests Automatisés</div>
-                                <div class="step-desc">Exécution des tests unitaires et d'intégration</div>
-                            </div>
-                            <div class="step-status step-success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                        </div>
-
-                        <div class="step">
-                            <div class="step-icon">
-                                <i class="fas fa-box"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">Build Docker</div>
-                                <div class="step-desc">Création de l'image container</div>
-                            </div>
-                            <div class="step-status step-running">
-                                <i class="fas fa-sync-alt"></i>
-                            </div>
-                        </div>
-
-                        <div class="step">
-                            <div class="step-icon">
-                                <i class="fas fa-upload"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">Publication sur Registry</div>
-                                <div class="step-desc">Push vers Docker Hub / GitHub Packages</div>
-                            </div>
-                            <div class="step-status">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                        </div>
-
-                        <div class="step">
-                            <div class="step-icon">
-                                <i class="fas fa-rocket"></i>
-                            </div>
-                            <div class="step-content">
-                                <div class="step-title">Déploiement Automatique</div>
-                                <div class="step-desc">Déploiement sur serveurs de production</div>
-                            </div>
-                            <div class="step-status">
-                                <i class="fas fa-clock"></i>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="card">
-                    <h2 class="card-title"><i class="fas fa-chart-bar"></i> Métriques</h2>
-
-                    <div class="metrics">
-                        <div class="metric-card">
-                            <div class="metric-value" id="build-time">2.4m</div>
-                            <div class="metric-label">Temps moyen de build</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="success-rate">98%</div>
-                            <div class="metric-label">Taux de succès</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="deploy-count">142</div>
-                            <div class="metric-label">Déploiements ce mois</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-value" id="test-coverage">92%</div>
-                            <div class="metric-label">Couverture de tests</div>
+                        <div class="stat">
+                            <div class="stat-value" id="comet-passes">0</div>
+                            <div class="stat-label">Passages de comètes</div>
                         </div>
                     </div>
 
-                    <div class="controls">
-                        <button class="btn btn-primary" id="trigger-deploy">
-                            <i class="fas fa-play-circle"></i> Déclencher un déploiement
+                    <div class="action-buttons">
+                        <button id="zoom-in" class="action-btn">
+                            <i class="fas fa-search-plus"></i> Zoom +
                         </button>
-                        <button class="btn btn-secondary" id="view-logs">
-                            <i class="fas fa-file-alt"></i> Voir les logs
+                        <button id="zoom-out" class="action-btn">
+                            <i class="fas fa-search-minus"></i> Zoom -
+                        </button>
+                        <button id="night-mode" class="action-btn">
+                            <i class="fas fa-moon"></i> Mode nuit
                         </button>
                     </div>
                 </div>
-            </section>
+            </div>
         </main>
 
-        <footer>
-            <p>Tableau de bord DevOps - TP Pipeline CI/CD</p>
-            <div class="footer-links">
-                <a href="#"><i class="fab fa-github"></i> Repository</a>
-                <a href="#"><i class="fas fa-book"></i> Documentation</a>
-                <a href="#"><i class="fas fa-question-circle"></i> Support</a>
+        <!-- Footer -->
+        <footer class="footer">
+            <div class="footer-content">
+                <p>Simulateur du Système Solaire 3D • Réalisé avec HTML, CSS & JavaScript</p>
+                <div class="footer-links">
+                    <button id="show-credits" class="footer-link">Crédits</button>
+                    <button id="show-help" class="footer-link">Aide</button>
+                    <button id="fullscreen" class="footer-link">
+                        <i class="fas fa-expand"></i> Plein écran
+                    </button>
+                </div>
             </div>
         </footer>
+
+        <!-- Modals -->
+        <div class="modal" id="credits-modal">
+            <div class="modal-content">
+                <h2>Crédits du projet</h2>
+                <p>Simulateur du Système Solaire 3D</p>
+                <p>Développé avec des technologies web modernes</p>
+                <ul>
+                    <li>HTML5 pour la structure</li>
+                    <li>CSS3 pour les animations et effets visuels</li>
+                    <li>JavaScript pour l'interactivité</li>
+                    <li>Effets 3D avec CSS Transforms</li>
+                </ul>
+                <button class="close-modal">Fermer</button>
+            </div>
+        </div>
+
+        <div class="modal" id="help-modal">
+            <div class="modal-content">
+                <h2>Comment utiliser le simulateur</h2>
+                <div class="help-content">
+                    <div class="help-item">
+                        <h3><i class="fas fa-mouse-pointer"></i> Contrôles</h3>
+                        <p>• Cliquez sur une planète pour la sélectionner</p>
+                        <p>• Utilisez le curseur pour ajuster la vitesse</p>
+                        <p>• Boutons pour contrôler l'animation</p>
+                    </div>
+                    <div class="help-item">
+                        <h3><i class="fas fa-eye"></i> Affichage</h3>
+                        <p>• Activer/désactiver les orbites</p>
+                        <p>• Zoom avant/arrière</p>
+                        <p>• Mode nuit pour une expérience immersive</p>
+                    </div>
+                </div>
+                <button class="close-modal">Fermer</button>
+            </div>
+        </div>
     </div>
 
     <script src="app.js"></script>
