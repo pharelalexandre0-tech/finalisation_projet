@@ -4,44 +4,1017 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mon Application Web</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Explorateur 3D du Système Solaire</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            z-index: 10;
+            transition: opacity 0.5s, transform 0.5s;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .controls.hidden {
+            opacity: 0;
+            transform: translateX(-100%);
+            pointer-events: none;
+        }
+
+        .controls h2 {
+            margin-bottom: 15px;
+            color: #4a9eff;
+            font-size: 20px;
+        }
+
+        .control-group {
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .control-group input[type="range"] {
+            width: 200px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #4a9eff, #357abd);
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 158, 255, 0.5);
+        }
+
+        .btn.active {
+            background: linear-gradient(135deg, #ff4a4a, #cc0000);
+        }
+
+        .info-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 400px;
+            z-index: 10;
+            transition: opacity 0.5s, transform 0.5s;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .info-panel.hidden {
+            opacity: 0;
+            transform: translateY(100%);
+            pointer-events: none;
+        }
+
+        .info-panel h3 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+
+        .stat {
+            margin: 8px 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-label {
+            color: #aaa;
+        }
+
+        .stat-value {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .instructions {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px 20px;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            max-width: 300px;
+            z-index: 10;
+            transition: opacity 0.5s, transform 0.5s;
+            border: 1px solid rgba(74, 158, 255, 0.3);
+        }
+
+        .instructions.hidden {
+            opacity: 0;
+            transform: translateX(100%);
+            pointer-events: none;
+        }
+
+        .instructions h3 {
+            color: #4a9eff;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+
+        .instructions p {
+            font-size: 13px;
+            color: #ccc;
+            margin-bottom: 8px;
+        }
+
+        /* Vue plein écran */
+        .fullscreen-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #000;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.8s;
+        }
+
+        .fullscreen-view.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        #fullscreen-canvas {
+            width: 100%;
+            height: 100%;
+        }
+
+        .close-fullscreen {
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            background: rgba(255, 74, 74, 0.9);
+            border: none;
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 24px;
+            transition: all 0.3s;
+            z-index: 10;
+            box-shadow: 0 4px 20px rgba(255, 74, 74, 0.5);
+        }
+
+        .close-fullscreen:hover {
+            transform: rotate(90deg) scale(1.1);
+            box-shadow: 0 6px 30px rgba(255, 74, 74, 0.8);
+        }
+
+        .planet-info-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.8) 70%, transparent 100%);
+            padding: 40px 50px 30px;
+            transform: translateY(100%);
+            transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .fullscreen-view.active .planet-info-overlay {
+            transform: translateY(0);
+        }
+
+        .planet-info-overlay h2 {
+            font-size: 42px;
+            color: #4a9eff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(74, 158, 255, 0.8);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        .info-item {
+            background: rgba(74, 158, 255, 0.1);
+            padding: 15px 20px;
+            border-radius: 10px;
+            border-left: 3px solid #4a9eff;
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.5s ease;
+        }
+
+        .fullscreen-view.active .info-item {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .fullscreen-view.active .info-item:nth-child(1) {
+            transition-delay: 0.3s;
+        }
+
+        .fullscreen-view.active .info-item:nth-child(2) {
+            transition-delay: 0.4s;
+        }
+
+        .fullscreen-view.active .info-item:nth-child(3) {
+            transition-delay: 0.5s;
+        }
+
+        .fullscreen-view.active .info-item:nth-child(4) {
+            transition-delay: 0.6s;
+        }
+
+        .info-item-label {
+            font-size: 12px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .info-item-value {
+            font-size: 20px;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .planet-description {
+            font-size: 16px;
+            line-height: 1.8;
+            color: #ccc;
+            max-width: 900px;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.6s ease 0.7s;
+        }
+
+        .fullscreen-view.active .planet-description {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .rotation-hint {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+            pointer-events: none;
+            opacity: 1;
+            transition: opacity 0.5s;
+        }
+
+        .rotation-hint.hidden {
+            opacity: 0;
+        }
+
+        .rotation-hint i {
+            font-size: 40px;
+            display: block;
+            margin-bottom: 10px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+                opacity: 0.6;
+            }
+
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+    </style>
 </head>
 
 <body>
-    <div class="container">
-        <header>
-            <h1>🚀 Mon Application DevOps</h1>
-            <p>Pipeline CI/CD avec GitHub Actions</p>
-        </header>
+    <div id="canvas-container"></div>
 
-        <main>
-            <section class="status">
-                <h2>État du déploiement : <span id="status">En cours...</span></h2>
-                <div class="info-box">
-                    <p><strong>Version :</strong> <span id="version">1.0.0</span></p>
-                    <p><strong>Dernier déploiement :</strong> <span id="timestamp">-</span></p>
-                </div>
-            </section>
-
-            <section class="features">
-                <h2>Fonctionnalités du Pipeline</h2>
-                <ul>
-                    <li>✅ Intégration Continue (CI)</li>
-                    <li>✅ Tests Automatisés</li>
-                    <li>✅ Build Docker</li>
-                    <li>✅ Publication sur Registry</li>
-                    <li>✅ Déploiement Automatique</li>
-                </ul>
-            </section>
-        </main>
-
-        <footer>
-            <p>TP DevOps - Pipeline CI/CD</p>
-        </footer>
+    <div class="controls">
+        <h2>🌍 Système Solaire 3D</h2>
+        <div class="control-group">
+            <label>Vitesse: <span id="speed-value">1x</span></label>
+            <input type="range" id="speed-slider" min="0" max="10" step="0.5" value="1">
+        </div>
+        <button id="play-pause" class="btn">⏸ Pause</button>
+        <button id="reset" class="btn">🔄 Réinitialiser</button>
+        <button id="toggle-orbits" class="btn active">🌐 Orbites</button>
     </div>
 
-    <script src="app.js"></script>
+    <div class="instructions">
+        <h3>Instructions</h3>
+        <p>🖱️ Clic gauche + glisser pour tourner</p>
+        <p>🖱️ Clic droit + glisser pour déplacer</p>
+        <p>🖱️ Molette pour zoomer</p>
+        <p>👆 Cliquez sur une planète pour la voir en détail</p>
+    </div>
+
+    <div class="info-panel">
+        <h3 id="selected-planet">Cliquez sur une planète</h3>
+        <div id="planet-stats"></div>
+    </div>
+
+    <!-- Vue plein écran -->
+    <div id="fullscreen-view" class="fullscreen-view">
+        <button class="close-fullscreen" id="close-fullscreen">×</button>
+        <div class="rotation-hint" id="rotation-hint">
+            <i>🖱️</i>
+            <div>Glissez pour faire tourner la planète</div>
+        </div>
+        <div id="fullscreen-canvas"></div>
+        <div class="planet-info-overlay">
+            <h2 id="fs-planet-name"></h2>
+            <div class="info-grid" id="fs-info-grid"></div>
+            <div class="planet-description" id="fs-description"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // Configuration des planètes avec textures réalistes
+        const planetData = {
+            sun: {
+                name: 'Soleil',
+                radius: 15,
+                distance: 0,
+                speed: 0,
+                color: 0xFDB813,
+                rotationSpeed: 0.004,
+                description: 'Le Soleil est l\'étoile au centre de notre système solaire. Il représente 99,86% de la masse totale du système solaire et fournit l\'énergie nécessaire à la vie sur Terre.',
+                diameter: '1 392 700 km',
+                temperature: '5 505°C (surface)',
+                composition: 'Hydrogène (73%) et Hélium (25%)',
+                age: '4,6 milliards d\'années'
+            },
+            mercury: {
+                name: 'Mercure',
+                radius: 2,
+                distance: 40,
+                speed: 0.04,
+                color: 0x8C7853,
+                rotationSpeed: 0.01,
+                description: 'Mercure est la planète la plus proche du Soleil et la plus petite du système solaire. Sa surface criblée de cratères ressemble à celle de la Lune.',
+                diameter: '4 879 km',
+                temperature: '-173°C à 427°C',
+                distance_sun: '57,9 millions km',
+                orbital_period: '88 jours terrestres'
+            },
+            venus: {
+                name: 'Vénus',
+                radius: 3.5,
+                distance: 60,
+                speed: 0.015,
+                color: 0xFFC649,
+                rotationSpeed: 0.005,
+                description: 'Vénus est la deuxième planète du système solaire. Son atmosphère dense de dioxyde de carbone crée un effet de serre intense, faisant d\'elle la planète la plus chaude.',
+                diameter: '12 104 km',
+                temperature: '462°C',
+                distance_sun: '108,2 millions km',
+                orbital_period: '225 jours terrestres'
+            },
+            earth: {
+                name: 'Terre',
+                radius: 4,
+                distance: 85,
+                speed: 0.01,
+                color: 0x2233FF,
+                rotationSpeed: 0.02,
+                description: 'La Terre est notre planète natale, la seule connue à ce jour pour abriter la vie. 71% de sa surface est couverte d\'eau liquide.',
+                diameter: '12 742 km',
+                temperature: '15°C (moyenne)',
+                distance_sun: '149,6 millions km',
+                orbital_period: '365,25 jours'
+            },
+            mars: {
+                name: 'Mars',
+                radius: 3,
+                distance: 110,
+                speed: 0.008,
+                color: 0xCD5C5C,
+                rotationSpeed: 0.018,
+                description: 'Mars, la planète rouge, doit sa couleur à l\'oxyde de fer présent à sa surface. Elle possède les plus grands volcans du système solaire.',
+                diameter: '6 779 km',
+                temperature: '-63°C (moyenne)',
+                distance_sun: '227,9 millions km',
+                orbital_period: '687 jours terrestres'
+            },
+            jupiter: {
+                name: 'Jupiter',
+                radius: 11,
+                distance: 150,
+                speed: 0.002,
+                color: 0xDAA520,
+                rotationSpeed: 0.04,
+                description: 'Jupiter est la plus grande planète du système solaire. Sa Grande Tache Rouge est une tempête anticyclonique active depuis au moins 350 ans.',
+                diameter: '139 820 km',
+                temperature: '-108°C',
+                distance_sun: '778,5 millions km',
+                orbital_period: '11,86 années terrestres'
+            },
+            saturn: {
+                name: 'Saturne',
+                radius: 9,
+                distance: 190,
+                speed: 0.0009,
+                color: 0xF4A460,
+                rotationSpeed: 0.038,
+                hasRings: true,
+                description: 'Saturne est célèbre pour ses magnifiques anneaux composés de milliards de particules de glace et de roche. C\'est la planète la moins dense du système solaire.',
+                diameter: '116 460 km',
+                temperature: '-139°C',
+                distance_sun: '1,43 milliards km',
+                orbital_period: '29,46 années terrestres'
+            },
+            uranus: {
+                name: 'Uranus',
+                radius: 6,
+                distance: 220,
+                speed: 0.0004,
+                color: 0x4FD0E0,
+                rotationSpeed: 0.03,
+                description: 'Uranus est une géante de glace qui tourne sur le côté. Son axe de rotation est incliné à 98 degrés, ce qui lui donne des saisons extrêmes.',
+                diameter: '50 724 km',
+                temperature: '-197°C',
+                distance_sun: '2,87 milliards km',
+                orbital_period: '84 années terrestres'
+            },
+            neptune: {
+                name: 'Neptune',
+                radius: 5.5,
+                distance: 250,
+                speed: 0.0001,
+                color: 0x4169E1,
+                rotationSpeed: 0.032,
+                description: 'Neptune est la planète la plus éloignée du Soleil. Elle possède les vents les plus violents du système solaire, atteignant 2 000 km/h.',
+                diameter: '49 244 km',
+                temperature: '-201°C',
+                distance_sun: '4,5 milliards km',
+                orbital_period: '165 années terrestres'
+            }
+        };
+
+        // Variables globales
+        let scene, camera, renderer, planets = {}, orbits = [], raycaster, mouse;
+        let isPlaying = true, timeSpeed = 1, showOrbits = true;
+        let fsScene, fsCamera, fsRenderer, fsPlanet;
+        let isFullscreen = false;
+        let isDraggingFS = false, previousMouseFS = { x: 0, y: 0 };
+
+        function init() {
+            // Scène principale
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+            camera.position.set(0, 150, 300);
+            camera.lookAt(0, 0, 0);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+            // Lumières améliorées
+            const ambientLight = new THREE.AmbientLight(0x222222);
+            scene.add(ambientLight);
+
+            const sunLight = new THREE.PointLight(0xffffff, 2.5, 1000);
+            sunLight.castShadow = true;
+            scene.add(sunLight);
+
+            createStars();
+
+            for (let key in planetData) {
+                createPlanet(key, planetData[key]);
+            }
+
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            setupEvents();
+            animate();
+        }
+
+        function createStars() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 1.2,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            const starsVertices = [];
+            for (let i = 0; i < 15000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+            }
+
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+        }
+
+        function createPlanet(key, data) {
+            const geometry = new THREE.SphereGeometry(data.radius, 64, 64);
+
+            // Créer une texture procédurale avec du bump mapping
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Créer un gradient de base
+            const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+            const color = new THREE.Color(data.color);
+            gradient.addColorStop(0, `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`);
+            gradient.addColorStop(0.5, `rgb(${color.r * 200}, ${color.g * 200}, ${color.b * 200})`);
+            gradient.addColorStop(1, `rgb(${color.r * 150}, ${color.g * 150}, ${color.b * 150})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Ajouter des détails (cratères, nuages, etc.)
+            for (let i = 0; i < 200; i++) {
+                ctx.fillStyle = `rgba(${Math.random() * 50}, ${Math.random() * 50}, ${Math.random() * 50}, ${Math.random() * 0.3})`;
+                ctx.beginPath();
+                ctx.arc(Math.random() * 512, Math.random() * 512, Math.random() * 20, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                color: data.color,
+                emissive: key === 'sun' ? data.color : 0x000000,
+                emissiveIntensity: key === 'sun' ? 0.8 : 0,
+                roughness: key === 'sun' ? 0.1 : 0.7,
+                metalness: 0.2,
+            });
+
+            const planet = new THREE.Mesh(geometry, material);
+            planet.castShadow = true;
+            planet.receiveShadow = true;
+
+            planet.userData = { key, ...data };
+            scene.add(planet);
+            planets[key] = planet;
+
+            // Anneaux pour Saturne
+            if (data.hasRings) {
+                const ringGeometry = new THREE.RingGeometry(data.radius * 1.5, data.radius * 2.5, 128);
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xD2B48C,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8,
+                    roughness: 0.8
+                });
+                const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+                rings.rotation.x = Math.PI / 2;
+                rings.castShadow = true;
+                rings.receiveShadow = true;
+                planet.add(rings);
+            }
+
+            // Orbites
+            if (data.distance > 0) {
+                const orbitGeometry = new THREE.BufferGeometry();
+                const orbitPoints = [];
+                for (let i = 0; i <= 128; i++) {
+                    const angle = (i / 128) * Math.PI * 2;
+                    orbitPoints.push(
+                        Math.cos(angle) * data.distance,
+                        0,
+                        Math.sin(angle) * data.distance
+                    );
+                }
+                orbitGeometry.setAttribute('position', new THREE.Float32BufferAttribute(orbitPoints, 3));
+                const orbitMaterial = new THREE.LineBasicMaterial({
+                    color: 0x444444,
+                    transparent: true,
+                    opacity: 0.5
+                });
+                const orbit = new THREE.Line(orbitGeometry, orbitMaterial);
+                scene.add(orbit);
+                orbits.push(orbit);
+            }
+        }
+
+        function setupEvents() {
+            window.addEventListener('resize', onWindowResize);
+            renderer.domElement.addEventListener('click', onPlanetClick);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+
+            document.getElementById('speed-slider').addEventListener('input', (e) => {
+                timeSpeed = parseFloat(e.target.value);
+                document.getElementById('speed-value').textContent = timeSpeed + 'x';
+            });
+
+            document.getElementById('play-pause').addEventListener('click', () => {
+                isPlaying = !isPlaying;
+                document.getElementById('play-pause').textContent = isPlaying ? '⏸ Pause' : '▶ Jouer';
+            });
+
+            document.getElementById('reset').addEventListener('click', () => {
+                camera.position.set(0, 150, 300);
+                camera.lookAt(0, 0, 0);
+            });
+
+            document.getElementById('toggle-orbits').addEventListener('click', () => {
+                showOrbits = !showOrbits;
+                document.getElementById('toggle-orbits').classList.toggle('active');
+                orbits.forEach(orbit => orbit.visible = showOrbits);
+            });
+
+            document.getElementById('close-fullscreen').addEventListener('click', closeFullscreen);
+
+            // Contrôles caméra principale
+            let isDragging = false;
+            let previousMousePosition = { x: 0, y: 0 };
+
+            renderer.domElement.addEventListener('mousedown', (e) => {
+                if (e.button === 0) isDragging = true;
+            });
+
+            renderer.domElement.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            renderer.domElement.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaX = e.clientX - previousMousePosition.x;
+                    const deltaY = e.clientY - previousMousePosition.y;
+                    camera.position.x += deltaX * 0.5;
+                    camera.position.y -= deltaY * 0.5;
+                    camera.lookAt(0, 0, 0);
+                }
+                previousMousePosition = { x: e.clientX, y: e.clientY };
+            });
+
+            renderer.domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.1;
+                const direction = e.deltaY > 0 ? 1 : -1;
+                const distance = camera.position.length();
+                const zoomAmount = distance * zoomSpeed * direction;
+                camera.position.multiplyScalar(1 + zoomAmount / distance);
+            }, { passive: false });
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            if (isPlaying && !isFullscreen) {
+                for (let key in planets) {
+                    const planet = planets[key];
+                    const data = planet.userData;
+                    planet.rotation.y += data.rotationSpeed * timeSpeed;
+
+                    if (data.distance > 0) {
+                        const angle = Date.now() * data.speed * timeSpeed * 0.001;
+                        planet.position.x = Math.cos(angle) * data.distance;
+                        planet.position.z = Math.sin(angle) * data.distance;
+                    }
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        function onMouseMove(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            if (!isFullscreen) {
+                raycaster.setFromCamera(mouse, camera);
+                const intersects = raycaster.intersectObjects(Object.values(planets));
+                document.body.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+            }
+        }
+
+        function onPlanetClick(event) {
+            if (isFullscreen) return;
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(Object.values(planets));
+
+            if (intersects.length > 0) {
+                const planet = intersects[0].object;
+                openFullscreen(planet.userData);
+            }
+        }
+
+        function openFullscreen(data) {
+            isFullscreen = true;
+            const fsView = document.getElementById('fullscreen-view');
+            fsView.classList.add('active');
+
+            // Masquer les contrôles
+            document.querySelector('.controls').classList.add('hidden');
+            document.querySelector('.instructions').classList.add('hidden');
+            document.querySelector('.info-panel').classList.add('hidden');
+
+            // Remplir les informations
+            document.getElementById('fs-planet-name').textContent = data.name;
+            document.getElementById('fs-description').textContent = data.description;
+
+            const infoHtml = `
+                <div class="info-item">
+                    <div class="info-item-label">Diamètre</div>
+                    <div class="info-item-value">${data.diameter}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-item-label">Distance au Soleil</div>
+                    <div class="info-item-value">${data.distance_sun || 'Centre du système'}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-item-label">Température</div>
+                    <div class="info-item-value">${data.temperature}</div>
+                </div>
+                <div class="info-item">
+                    <div class="info-item-label">Période orbitale</div>
+                    <div class="info-item-value">${data.orbital_period || 'N/A'}</div>
+                </div>
+            `;
+            document.getElementById('fs-info-grid').innerHTML = infoHtml;
+
+            // Créer la scène 3D plein écran
+            setTimeout(() => initFullscreenScene(data), 300);
+        }
+
+        function initFullscreenScene(data) {
+            const container = document.getElementById('fullscreen-canvas');
+            container.innerHTML = '';
+
+            fsScene = new THREE.Scene();
+            fsCamera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            fsCamera.position.z = data.radius * 4;
+
+            fsRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+            fsRenderer.setSize(window.innerWidth, window.innerHeight);
+            fsRenderer.shadowMap.enabled = true;
+            container.appendChild(fsRenderer.domElement);
+
+            // Lumières pour le plein écran
+            const ambientLight = new THREE.AmbientLight(0x404040, 1);
+            fsScene.add(ambientLight);
+
+            const mainLight = new THREE.DirectionalLight(0xffffff, 1.5);
+            mainLight.position.set(10, 10, 10);
+            mainLight.castShadow = true;
+            fsScene.add(mainLight);
+
+            const fillLight = new THREE.DirectionalLight(0x4a9eff, 0.5);
+            fillLight.position.set(-10, 0, -10);
+            fsScene.add(fillLight);
+
+            const backLight = new THREE.PointLight(0xffffff, 0.8);
+            backLight.position.set(0, 0, -20);
+            fsScene.add(backLight);
+
+            // Créer la planète en haute qualité
+            const geometry = new THREE.SphereGeometry(data.radius * 2, 128, 128);
+
+            // Texture procédurale améliorée
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            const color = new THREE.Color(data.color);
+
+            // Base de couleur
+            const gradient = ctx.createRadialGradient(512, 512, 0, 512, 512, 512);
+            gradient.addColorStop(0, `rgb(${color.r * 255}, ${color.g * 255}, ${color.b * 255})`);
+            gradient.addColorStop(0.7, `rgb(${color.r * 220}, ${color.g * 220}, ${color.b * 220})`);
+            gradient.addColorStop(1, `rgb(${color.r * 180}, ${color.g * 180}, ${color.b * 180})`);
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            // Ajouter des cratères et détails
+            for (let i = 0; i < 500; i++) {
+                const x = Math.random() * 1024;
+                const y = Math.random() * 1024;
+                const radius = Math.random() * 30 + 5;
+                const opacity = Math.random() * 0.4 + 0.1;
+
+                const craterGradient = ctx.createRadialGradient(x, y, 0, x, y, radius);
+                craterGradient.addColorStop(0, `rgba(0, 0, 0, ${opacity})`);
+                craterGradient.addColorStop(0.5, `rgba(${color.r * 100}, ${color.g * 100}, ${color.b * 100}, ${opacity * 0.5})`);
+                craterGradient.addColorStop(1, `rgba(255, 255, 255, 0)`);
+
+                ctx.fillStyle = craterGradient;
+                ctx.beginPath();
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Ajouter des nuages pour les planètes gazeuses
+            if (['jupiter', 'saturn', 'uranus', 'neptune'].includes(data.key)) {
+                for (let i = 0; i < 100; i++) {
+                    const y = Math.random() * 1024;
+                    const width = 1024;
+                    const height = Math.random() * 40 + 10;
+                    const opacity = Math.random() * 0.3 + 0.1;
+
+                    ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`;
+                    ctx.fillRect(0, y, width, height);
+                }
+            }
+
+            const texture = new THREE.CanvasTexture(canvas);
+
+            // Créer une bump map pour le relief
+            const bumpCanvas = document.createElement('canvas');
+            bumpCanvas.width = 512;
+            bumpCanvas.height = 512;
+            const bumpCtx = bumpCanvas.getContext('2d');
+
+            for (let i = 0; i < 1000; i++) {
+                bumpCtx.fillStyle = `rgba(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255}, ${Math.random()})`;
+                bumpCtx.fillRect(Math.random() * 512, Math.random() * 512, Math.random() * 10, Math.random() * 10);
+            }
+
+            const bumpMap = new THREE.CanvasTexture(bumpCanvas);
+
+            const material = new THREE.MeshStandardMaterial({
+                map: texture,
+                bumpMap: bumpMap,
+                bumpScale: 0.5,
+                emissive: data.key === 'sun' ? data.color : 0x000000,
+                emissiveIntensity: data.key === 'sun' ? 1 : 0,
+                roughness: data.key === 'sun' ? 0.3 : 0.8,
+                metalness: 0.1,
+            });
+
+            fsPlanet = new THREE.Mesh(geometry, material);
+            fsPlanet.castShadow = true;
+            fsPlanet.receiveShadow = true;
+            fsScene.add(fsPlanet);
+
+            // Anneaux pour Saturne
+            if (data.hasRings) {
+                const ringGeometry = new THREE.RingGeometry(data.radius * 2.2, data.radius * 3.5, 128);
+                const ringMaterial = new THREE.MeshStandardMaterial({
+                    color: 0xD2B48C,
+                    side: THREE.DoubleSide,
+                    transparent: true,
+                    opacity: 0.8,
+                    roughness: 0.8,
+                });
+                const rings = new THREE.Mesh(ringGeometry, ringMaterial);
+                rings.rotation.x = Math.PI / 2.2;
+                rings.castShadow = true;
+                rings.receiveShadow = true;
+                fsPlanet.add(rings);
+            }
+
+            // Ajouter une atmosphère lumineuse
+            if (data.key !== 'sun') {
+                const glowGeometry = new THREE.SphereGeometry(data.radius * 2.1, 64, 64);
+                const glowMaterial = new THREE.MeshBasicMaterial({
+                    color: data.color,
+                    transparent: true,
+                    opacity: 0.15,
+                    side: THREE.BackSide
+                });
+                const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+                fsPlanet.add(glow);
+            }
+
+            // Contrôles de rotation avec la souris
+            const fsCanvas = fsRenderer.domElement;
+
+            fsCanvas.addEventListener('mousedown', (e) => {
+                isDraggingFS = true;
+                document.getElementById('rotation-hint').classList.add('hidden');
+            });
+
+            fsCanvas.addEventListener('mouseup', () => {
+                isDraggingFS = false;
+            });
+
+            fsCanvas.addEventListener('mouseleave', () => {
+                isDraggingFS = false;
+            });
+
+            fsCanvas.addEventListener('mousemove', (e) => {
+                if (isDraggingFS) {
+                    const deltaX = e.clientX - previousMouseFS.x;
+                    const deltaY = e.clientY - previousMouseFS.y;
+
+                    fsPlanet.rotation.y += deltaX * 0.01;
+                    fsPlanet.rotation.x += deltaY * 0.01;
+                }
+                previousMouseFS = { x: e.clientX, y: e.clientY };
+            });
+
+            // Zoom avec molette
+            fsCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const zoomSpeed = 0.1;
+                const direction = e.deltaY > 0 ? 1 : -1;
+                fsCamera.position.z += direction * zoomSpeed * data.radius;
+                fsCamera.position.z = Math.max(data.radius * 2.5, Math.min(data.radius * 8, fsCamera.position.z));
+            }, { passive: false });
+
+            animateFullscreen();
+        }
+
+        function animateFullscreen() {
+            if (!isFullscreen) return;
+
+            requestAnimationFrame(animateFullscreen);
+
+            // Rotation automatique lente si pas de drag
+            if (!isDraggingFS) {
+                fsPlanet.rotation.y += 0.005;
+            }
+
+            fsRenderer.render(fsScene, fsCamera);
+        }
+
+        function closeFullscreen() {
+            isFullscreen = false;
+            document.getElementById('fullscreen-view').classList.remove('active');
+            document.getElementById('rotation-hint').classList.remove('hidden');
+
+            setTimeout(() => {
+                document.querySelector('.controls').classList.remove('hidden');
+                document.querySelector('.instructions').classList.remove('hidden');
+                document.querySelector('.info-panel').classList.remove('hidden');
+            }, 500);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+
+            if (isFullscreen && fsCamera && fsRenderer) {
+                fsCamera.aspect = window.innerWidth / window.innerHeight;
+                fsCamera.updateProjectionMatrix();
+                fsRenderer.setSize(window.innerWidth, window.innerHeight);
+            }
+        }
+
+        init();
+    </script>
 </body>
 
 </html>
