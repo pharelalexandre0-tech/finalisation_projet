@@ -2,7 +2,7 @@ name: Publish Docker Image
 
 on:
   push:
-    branches: [ main,dev ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -19,38 +19,60 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
     
-    - name: 🐳 Build et Push
+    - name: 🐳 Build et Push l'image
       run: |
         echo "🔨 Construction de l'image Docker..."
         
         # Variables
-        DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
-        IMAGE_NAME="$DOCKER_USER/tp-devops-app"
+        IMAGE_NAME="${{ secrets.DOCKER_USERNAME }}/tp-devops-app"
         
-        echo "Image: $IMAGE_NAME"
-        echo "SHA: ${{ github.sha }}"
+        # Raccourcir le SHA (premiers 7 caractères)
+        SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
         
-        # Build avec tags
+        # Construire avec plusieurs tags
         docker build -t $IMAGE_NAME:latest \
-                     -t $IMAGE_NAME:${{ github.sha }} .
+                     -t $IMAGE_NAME:${{ github.sha }} \
+                     -t $IMAGE_NAME:$SHA_SHORT \
+                     -t $IMAGE_NAME:${{ github.ref_name }} .
         
-        echo "✅ Images construites"
+        echo "✅ Images construites :"
+        echo "  - $IMAGE_NAME:latest"
+        echo "  - $IMAGE_NAME:${{ github.sha }}"
+        echo "  - $IMAGE_NAME:$SHA_SHORT"
+        echo "  - $IMAGE_NAME:${{ github.ref_name }}"
         
-        # Push
-        echo "📤 Envoi vers Docker Hub..."
+        # Pousser toutes les images
+        echo "📤 Pushing images to Docker Hub..."
         docker push $IMAGE_NAME:latest
         docker push $IMAGE_NAME:${{ github.sha }}
+        docker push $IMAGE_NAME:$SHA_SHORT
+        docker push $IMAGE_NAME:${{ github.ref_name }}
         
-        echo "🎉 Images publiées !"
+        echo "🎉 Images poussées avec succès !"
     
-    - name: 📢 Rapport
+    - name: 📝 Rapport de publication
       run: |
-        echo "## 🐳 IMAGE DOCKER PUBLIÉE" >> $GITHUB_STEP_SUMMARY
+        # Calculer SHA court pour l'affichage
+        SHA_SHORT=$(echo "${{ github.sha }}" | cut -c1-7)
+        
+        echo "## 🐳 DOCKER IMAGE PUBLISHED" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**✅ SUCCÈS**" >> $GITHUB_STEP_SUMMARY
+        echo "**✅ IMAGES DISPONIBLES SUR DOCKER HUB**" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Images disponibles sur Docker Hub :**" >> $GITHUB_STEP_SUMMARY
+        echo "**📦 Images :**" >> $GITHUB_STEP_SUMMARY
         echo "- \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:latest\`" >> $GITHUB_STEP_SUMMARY
         echo "- \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:$SHA_SHORT\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`${{ secrets.DOCKER_USERNAME }}/tp-devops-app:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "**Lien :** https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/tp-devops-app" >> $GITHUB_STEP_SUMMARY
+        echo "**🔗 Liens :**" >> $GITHUB_STEP_SUMMARY
+        echo "- [Docker Hub Repository](https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/tp-devops-app)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**🚀 Pour tester :**" >> $GITHUB_STEP_SUMMARY
+        echo '```bash' >> $GITHUB_STEP_SUMMARY
+        echo "# Pull l'image" >> $GITHUB_STEP_SUMMARY
+        echo "docker pull ${{ secrets.DOCKER_USERNAME }}/tp-devops-app:latest" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "# Lancer le conteneur" >> $GITHUB_STEP_SUMMARY
+        echo "docker run -p 8080:80 ${{ secrets.DOCKER_USERNAME }}/tp-devops-app" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
